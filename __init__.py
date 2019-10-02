@@ -1,61 +1,63 @@
-from pwd import getpwnam
-import os
 import subprocess
-
 from mycroft.util.log import LOG
-from mycroft.skills.core import MycroftSkill
 from adapt.intent import IntentBuilder
-
-
-def set_user(uid, gid):
-    LOG.info('Setting group and user to {}:{}'.format(gid, uid))
-    os.setgid(gid)
-    os.setuid(uid)
-
+from mycroft.skills.core import MycroftSkill, intent_handler
 
 class CmdSkill(MycroftSkill):
     def __init__(self):
         super(CmdSkill, self).__init__('CmdSkill')
-        self.uid = None
-        self.gid = None
-        self.alias = {}
+ 
 
-    def get_config(self, key):
-        self.log.debug(self.settings)
-        return (self.settings.get(key) or
-                self.config_core.get('CmdSkill', {}).get(key))
+    @intent_handler(IntentBuilder("").require("Play").require("Cd").require("Playlist").optionally("Spotify"))
+    def handle_playlist_cdd_intent(self, message):
+            self.speak_dialog("confirm")
+            subprocess.call('/home/pi/scripts/cdd.sh', shell=True)
 
-    def initialize(self):
-        user = self.get_config('user')
-        if user:
-            pwnam = getpwnam(user)
-            self.uid = pwnam.pw_uid
-            self.gid = pwnam.pw_gid
-        self.alias = self.get_config('alias') or {}
+    @intent_handler(IntentBuilder("").require("Play").require("Softies").optionally("Playlist").optionally("Spotify"))
+    def handle_playlist_softies_intent(self, message):
+            self.speak_dialog("confirm")
+            subprocess.call('/home/pi/scripts/softies.sh', shell=True)
 
-        for alias in self.alias:
-            self.log.info("Adding {}".format(alias))
-            self.register_vocabulary(alias, 'Script')
+    @intent_handler(IntentBuilder("").require("Play").require("Vibes").optionally("Playlist").optionally("Spotify"))
+    def handle_playlist_vibes_intent(self, message):
+            self.speak_dialog("confirm")
+            subprocess.call('/home/pi/scripts/vibes.sh', shell=True)
 
-        intent = IntentBuilder('RunScriptCommandIntent')\
-            .require('Script').require('Run').build()
-        self.register_intent(intent, self.run)
+    @intent_handler(IntentBuilder("").require("Play").require("Ajr").optionally("Playlist").optionally("Spotify"))
+    def handle_playlist_ajr_intent(self, message):
+            self.speak_dialog("confirm")
+            subprocess.call('/home/pi/scripts/ajr.sh', shell=True)
 
-        self.bus.on('CmdSkillRun', self.run)
+    @intent_handler(IntentBuilder("").require("Play").require("Indies").optionally("Playlist").optionally("Spotify"))
+    def handle_playlist_indies_intent(self, message):
+            self.speak_dialog("confirm")
+            subprocess.call('/home/pi/scripts/mixed_vibes.sh', shell=True)
 
-    def run(self, message):
-        script = message.data.get('Script')
-        script = self.alias.get(script, script)
-        args = script.split(' ')
-        try:
-            if self.uid and self.gid:
-                subprocess.Popen(args,
-                                 preexec_fn=set_user(self.uid, self.gid))
-            else:
-                self.log.info('Running {}'.format(args))
-                subprocess.Popen(args)
-        except Exception:
-            self.log.debug('Could not run script ' + script, exc_info=True)
+    @intent_handler(IntentBuilder("").require("Play").require("Mixed").require("Vibes").optionally("Playlist").optionally("Spotify"))
+    def handle_playlist_mixedVibes_intent(self, message):
+            self.speak_dialog("confirm")
+            subprocess.call('/home/pi/scripts/mixed_vibes.sh', shell=True)
+
+    @intent_handler(IntentBuilder("").require("Stop").require("Music").optionally("Spotify"))
+    def handle_stop_music_intent(self, message):
+            self.speak_dialog("off")
+            subprocess.call('/home/pi/scripts/stop-mpc.sh', shell=True)
+
+    @intent_handler(IntentBuilder("").require("Skip").require("Song").require("Spotify"))
+    def handle_skip_song_intent(self, message):
+            self.speak_dialog("next")
+            subprocess.call("mpc next", shell=True)
+
+    @intent_handler(IntentBuilder("").require("Turn").require("Volume").require("Up").require("Spotify"))
+    def handle_volume_up_intent(self, message):
+            self.speak_dialog("up")
+            subprocess.call('mpc volume +15', shell=True)
+
+
+    @intent_handler(IntentBuilder("").require("Turn").require("Volume").require("Down").require("Spotify"))
+    def handle_volume_down_intent(self, message):
+            self.speak_dialog("down")
+            subprocess.call('mpc volume -15', shell=True)
 
 
 def create_skill():
